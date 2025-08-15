@@ -126,6 +126,7 @@ def InitInventoryWindow (Window):
 	return
 
 def UpdateInventoryWindow (Window):
+	print("UpdateInventoryWindow")
 	"""Redraws the inventory window and resets TopIndex."""
 
 	Window.OnClose(InventoryCommon.InventoryClosed)
@@ -138,6 +139,7 @@ def UpdateInventoryWindow (Window):
 	#populate inventory slot controls
 	SlotCount = GemRB.GetSlotType (-1)["Count"]
 
+	print("Updating all inventory slots")
 	for i in range (SlotCount):
 		InventoryCommon.UpdateSlot (pc, i)
 	return

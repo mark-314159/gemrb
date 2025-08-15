@@ -57,21 +57,23 @@ def InventoryClosed(win):
 	GUICommonWindows.TopWindowClosed(win)
 
 def OnDragItemGround (btn):
-	"""Drops and item to the ground."""
+	print("""Drops and item to the ground.""")
 	
 	pc = GemRB.GameGetSelectedPCSingle ()
 	slot = btn.Value
 
-	GemRB.GetView ("MsgSys").SetText ("")
-
 	if GemRB.IsDraggingItem ()==0:
 		slot_item = GemRB.GetContainerItem (pc, slot)
+		print(slot_item)
 		item = GemRB.GetItem (slot_item["ItemResRef"])
 		GemRB.DragItem (pc, slot, item["ItemIcon"], 0, 1) #container
+		print(f"in OnDragItemGround: {item}, dragging?: {GemRB.IsDraggingItem ()}")
 		if GameCheck.IsPST():
 			GemRB.PlaySound (item["DescIcon"])
 	else:
 		GemRB.DropDraggedItem (pc, -2) #dropping on ground
+
+	GemRB.GetView ("MsgSys").SetText ("")
 
 	return
 
@@ -216,7 +218,7 @@ def MouseEnterSlot (Button):
 		drag_item = GemRB.GetSlotItem (0, 0)
 		SlotType = UpdateSlot (pc, Button.Value - 1)
 
-		if GemRB.CanUseItemType (SlotType["Type"], drag_item["ItemResRef"]):
+		if GemRB.CanUseItemType (SlotType["Type"], drag_item["ItemResRef"], pc, False):
 			Button.SetState (IE_GUI_BUTTON_SELECTED)
 		else:
 			Button.SetState (IE_GUI_BUTTON_ENABLED)
@@ -743,6 +745,7 @@ def OpenItemAmountWindow (btn, location = "inventory"):
 	return
 
 def UpdateSlot (pc, slot):
+	print("Entering UpdateSlot method")
 	"""Updates a specific slot."""
 
 	Window = GemRB.GetView("WIN_INV")
@@ -776,9 +779,13 @@ def UpdateSlot (pc, slot):
 	if ControlID == -1:
 		return None
 
+	drag_item = None
+	print(f"Are we actually dragging?: {GemRB.IsDraggingItem ()}")
 	if GemRB.IsDraggingItem ()==1:
 		#get dragged item
+		print("Is dragging item")
 		drag_item = GemRB.GetSlotItem (0,0)
+		print(drag_item)
 		itemname = drag_item["ItemResRef"]
 	else:
 		itemname = ""
@@ -841,12 +848,30 @@ def UpdateSlot (pc, slot):
 		Button.OnRightPress (None)
 		Button.OnShiftPress (None)
 		Button.OnDoublePress (OpenItemAmountWindow)
-	if not slot_item:
-		Button.SetState (IE_GUI_BUTTON_LOCKED)
-	elif (SlotType["Type"]&SLOT_INVENTORY) or not GemRB.CanUseItemType (SlotType["Type"], itemname):
+
+	# Shield check for two-handed weapon
+	drag_item_is_two_handed = drag_item and drag_item["Flags"] & IE_INV_ITEM_TWOHANDED
+	twoHandedWeaponCheck = not drag_item or not drag_item_is_two_handed or (drag_item_is_two_handed and GemRB.GetSlotItem (pc, 3) == None) # shield unequipped
+
+	# Two-handed weapon check for shield
+	drag_item_is_shield = drag_item and GemRB.CanUseItemType (SLOT_SHIELD, itemname, pc, False)
+	no_two_handed_weapon_equipped = True
+	for i in range(4):
+		weapon_slot = GemRB.GetSlotItem (pc, 10 + i)
+		if weapon_slot and weapon_slot["Flags"] & IE_INV_ITEM_TWOHANDED:
+			no_two_handed_weapon_equipped = False
+			break
+	shieldCheck = not drag_item or not drag_item_is_shield or (drag_item_is_shield and no_two_handed_weapon_equipped) # check if two-handed weapon is equipped
+
+	canEquipItem = GemRB.CanUseItemType (SlotType["Type"], itemname, pc, False) and twoHandedWeaponCheck and shieldCheck
+	isInventorySlot = SlotType["Type"]&SLOT_INVENTORY
+
+	if canEquipItem and not isInventorySlot:
+		Button.SetState (IE_GUI_BUTTON_FAKEPRESSED)
+	elif isInventorySlot:
 		Button.SetState (IE_GUI_BUTTON_ENABLED)
 	else:
-		Button.SetState (IE_GUI_BUTTON_FAKEPRESSED)
+		Button.SetState (IE_GUI_BUTTON_LOCKED)
 
 	# highlight equipped weapons and ammo
 	if slot_item and (GemRB.GetEquippedQuickSlot (pc)==slot+1 or GemRB.GetEquippedAmmunition (pc)==slot+1):
