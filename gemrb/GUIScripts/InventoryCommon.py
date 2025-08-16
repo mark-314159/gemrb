@@ -745,7 +745,6 @@ def OpenItemAmountWindow (btn, location = "inventory"):
 	return
 
 def UpdateSlot (pc, slot):
-	print("Entering UpdateSlot method")
 	"""Updates a specific slot."""
 
 	Window = GemRB.GetView("WIN_INV")
@@ -853,6 +852,8 @@ def UpdateSlot (pc, slot):
 	drag_item_is_two_handed = drag_item and drag_item["Flags"] & IE_INV_ITEM_TWOHANDED
 	twoHandedWeaponCheck = not drag_item or not drag_item_is_two_handed or (drag_item_is_two_handed and GemRB.GetSlotItem (pc, 3) == None) # shield unequipped
 
+	weapon_allowed_offhand = not drag_item_is_two_handed or not (drag_item_is_two_handed and SlotType["Type"]&SLOT_SHIELD)
+
 	# Two-handed weapon check for shield
 	drag_item_is_shield = drag_item and GemRB.CanUseItemType (SLOT_SHIELD, itemname, pc, False)
 	no_two_handed_weapon_equipped = True
@@ -863,7 +864,7 @@ def UpdateSlot (pc, slot):
 			break
 	shieldCheck = not drag_item or not drag_item_is_shield or (drag_item_is_shield and no_two_handed_weapon_equipped) # check if two-handed weapon is equipped
 
-	canEquipItem = GemRB.CanUseItemType (SlotType["Type"], itemname, pc, False) and twoHandedWeaponCheck and shieldCheck
+	canEquipItem = GemRB.CanUseItemType (SlotType["Type"], itemname, pc, False) and twoHandedWeaponCheck and shieldCheck and weapon_allowed_offhand
 	isInventorySlot = SlotType["Type"]&SLOT_INVENTORY
 
 	if canEquipItem and not isInventorySlot:
